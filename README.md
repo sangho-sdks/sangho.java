@@ -1,76 +1,71 @@
 # Sangho Java SDK
 
-Official Java SDK for the [Sangho](https://sangho.com) payment platform.
+SDK officiel Java pour l'API [Sangho](https://sangho.africa) — paiements XAF pour l'Afrique.
 
-## Requirements
+[![Maven Central](https://img.shields.io/maven-central/v/io.sangho/sangho-java.svg)](https://central.sonatype.com/artifact/io.sangho/sangho-java)
+[![CI](https://github.com/sangho-sdks/sangho-java/actions/workflows/ci.yml/badge.svg)](https://github.com/sangho-sdks/sangho-java/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- Java 17+
-- Maven 3.9+ or Gradle 8+
+---
 
 ## Installation
 
-### Maven
+**Maven :**
 
 ```xml
 <dependency>
-    <groupId>com.sangho</groupId>
-    <artifactId>sangho-sdk</artifactId>
-    <version>1.0.0</version>
+  <groupId>com.sangho</groupId>
+  <artifactId>sangho-java</artifactId>
+  <version>1.0.0</version>
 </dependency>
 ```
 
-### Gradle
+**Gradle :**
 
 ```groovy
-implementation 'com.sangho:sangho-sdk:1.0.0'
+implementation 'io.sangho:sangho-java:1.0.0'
 ```
 
-## Quick Start
+## Quickstart
 
 ```java
-SanghoClient sangho = SanghoClient.builder()
-    .apiKey("sk_test_xxx")
+import io.sangho.Sangho;
+import io.sangho.model.PaymentIntent;
+
+Sangho client = Sangho.builder()
+    .secretKey("sk_live_...")
     .build();
 
-// List customers
-ListResponse<Customer> list = sangho.customers().list(
-    CustomerListParams.builder().status("active").pageSize(20).build()
-);
-
-// Create a payment intent
-PaymentIntent intent = sangho.paymentIntents().create(
-    PaymentIntentCreateParams.builder()
-        .amount(25000)
+// Créer un payment intent
+PaymentIntent intent = client.paymentIntents().create(
+    CreatePayloads.builder()
+        .amount(5000)
+        .currency("XAF")
         .customer("cust_xxx")
         .build()
 );
 
-// Confirm
-PaymentIntent confirmed = sangho.paymentIntents().confirm(intent.id(), null);
+System.out.println(intent.getId());
 ```
 
-## Error Handling
+## Documentation
 
-```java
-try {
-    sangho.invoices().pay("inv_xxx", null);
-} catch (SanghoValidationException e) {
-    e.getFieldErrors().forEach((field, errors) ->
-        System.out.println(field + ": " + errors));
-} catch (SanghoNotFoundException e) {
-    System.out.println("Invoice not found");
-} catch (SanghoRateLimitException e) {
-    System.out.println("Retry after: " + e.getRetryAfter() + "s");
-}
-```
+La documentation complète est disponible sur [docs.sangho.africa](https://docs.sangho.africa).
 
-## Webhook Verification
+## Ressources disponibles
 
-```java
-Map<String, Object> event = WebhooksResource.constructEvent(
-    requestBodyBytes,
-    request.getHeader("Sangho-Signature"),
-    "whsec_xxx",
-    300
-);
-```
+`apps` · `customers` · `products` · `paymentIntents` · `checkoutSessions` ·
+`invoices` · `transactions` · `refunds` · `subscriptions` · `paymentMethods` ·
+`webhooks` · `paymentLinks` · `addresses` · `partners`
+
+## Contribuer
+
+Voir [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Changelog
+
+Voir [CHANGELOG.md](CHANGELOG.md).
+
+## Licence
+
+MIT

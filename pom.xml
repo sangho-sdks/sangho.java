@@ -6,13 +6,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.sangho</groupId>
-    <artifactId>sangho-sdk</artifactId>
+    <artifactId>sangho-java</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>Sangho Java SDK</name>
-    <description>XAF-first payment platform SDK for Africa</description>
-    <url>https://github.com/sangho/sangho-java</url>
+    <description>SDK officiel Java pour l'API Sangho</description>
+    <url>https://docs.sangho.com</url>
 
     <licenses>
         <license>
@@ -21,9 +21,22 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+        <name>Sangho</name>
+        <email>dev@sangho.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/sangho-sdks/sangho-java.git</connection>
+        <url>https://github.com/sangho-sdks/sangho-java</url>
+    </scm>
+
     <properties>
         <java.version>25</java.version>
-        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -77,6 +90,72 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                <execution>
+                    <goals><goal>prepare-agent</goal></goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>verify</phase>
+                    <goals><goal>report</goal></goals>
+                </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <!-- Profile release pour Maven Central -->
+    <profiles>
+        <profile>
+        <id>release</id>
+        <build>
+            <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                <execution>
+                    <goals><goal>jar-no-fork</goal></goals>
+                </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                <execution>
+                    <goals><goal>jar</goal></goals>
+                </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.2</version>
+                <executions>
+                <execution>
+                    <goals><goal>sign</goal></goals>
+                </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                <publishingServerId>central</publishingServerId>
+                <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+            </plugins>
+        </build>
+        </profile>
+    </profiles>
 </project>
