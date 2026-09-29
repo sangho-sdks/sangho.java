@@ -50,6 +50,11 @@ public class SubscriptionsResource {
         return http.post("/subscriptions/" + id + "/resume/", Map.of(), Subscription.class);
     }
 
+    public Subscription reactivate(String id) {
+        http.assertSecretKey("subscriptions.reactivate");
+        return http.post("/subscriptions/" + id + "/reactivate/", Map.of(), Subscription.class);
+    }
+
     public Map<String, Object> options() {
         return http.options("/subscriptions/");
     }

@@ -1,8 +1,11 @@
 package com.sangho.param;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class ProductUpdateParams {
     private final String name;
     private final Integer price;

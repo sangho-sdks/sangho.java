@@ -1,8 +1,11 @@
 package com.sangho.param;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class SubscriptionCreateParams {
     private final String customer;
     private final String plan;

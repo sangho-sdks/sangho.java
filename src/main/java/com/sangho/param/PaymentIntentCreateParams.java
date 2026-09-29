@@ -1,11 +1,15 @@
 package com.sangho.param;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class PaymentIntentCreateParams {
     private final Integer amount;
     private final String customer;
+    @JsonProperty("payment_method")
     private final String paymentMethod;
     private final String description;
 

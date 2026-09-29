@@ -53,6 +53,16 @@ public class WebhooksResource {
         return http.post("/webhooks/" + id + "/roll-secret/", Map.of(), Webhook.class);
     }
 
+    public Webhook disable(String id) {
+        http.assertSecretKey("webhooks.disable");
+        return http.post("/webhooks/" + id + "/disable/", Map.of(), Webhook.class);
+    }
+
+    public Webhook enable(String id) {
+        http.assertSecretKey("webhooks.enable");
+        return http.post("/webhooks/" + id + "/enable/", Map.of(), Webhook.class);
+    }
+
     public Map<String, Object> sendTestEvent(String id, String eventType) {
         http.assertSecretKey("webhooks.sendTestEvent");
         return http.post("/webhooks/" + id + "/test/", Map.of("event_type", eventType), Map.class);
@@ -61,6 +71,16 @@ public class WebhooksResource {
     public Map<String, Object> retryDelivery(String id, String deliveryId) {
         http.assertSecretKey("webhooks.retryDelivery");
         return http.post("/webhooks/" + id + "/deliveries/" + deliveryId + "/retry/", Map.of(), Map.class);
+    }
+
+    public Map<String, Object> listDeliveries(String id, Map<String, String> params) {
+        http.assertSecretKey("webhooks.listDeliveries");
+        return http.get("/webhooks/" + id + "/deliveries/", params, new TypeReference<Map<String, Object>>() {});
+    }
+
+    public Map<String, Object> retrieveDelivery(String id, String deliveryId) {
+        http.assertSecretKey("webhooks.retrieveDelivery");
+        return http.get("/webhooks/" + id + "/deliveries/" + deliveryId + "/", null, new TypeReference<Map<String, Object>>() {});
     }
 
     public Map<String, Object> options() {

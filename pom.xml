@@ -7,12 +7,12 @@
 
     <groupId>com.sangho</groupId>
     <artifactId>sangho-java</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <name>Sangho Java SDK</name>
     <description>SDK officiel Java pour l'API Sangho</description>
-    <url>https://docs.sangho.com</url>
+    <url>https://docs.sangho.ga/api/sdks/java/</url>
 
     <licenses>
         <license>
@@ -23,20 +23,31 @@
 
     <developers>
         <developer>
-        <name>Sangho</name>
-        <email>dev@sangho.com</email>
+            <name>Sangho</name>
+            <email>nels.holy.allg@gmail.com</email>
         </developer>
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/sangho-sdks/sangho-java.git</connection>
-        <url>https://github.com/sangho-sdks/sangho-java</url>
+        <connection>scm:git:git://github.com/sangho-sdks/sangho.java.git</connection>
+        <url>https://github.com/sangho-sdks/sangho.java</url>
     </scm>
 
+    <issueManagement>
+        <url>https://github.com/sangho-sdks/sangho.java/issues</url>
+    </issueManagement>
+
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <!--
+          Java 21 (LTS) : la version publiée la plus récente est JDK 26
+          (non-LTS, mars 2026), mais la majorité des systèmes de production
+          Java tournent encore sur la LTS précédente (21) — 25 est la LTS
+          courante. Pour une lib serveur (paiements), on vise la plus large
+          compatibilité réaliste plutôt que la version la plus récente :
+          21 (LTS) en plancher de compilation, testé en CI jusqu'à 26.
+        -->
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -78,6 +89,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <configuration>
+                    <excludedGroups>integration</excludedGroups>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -108,8 +122,25 @@
         </plugins>
     </build>
 
-    <!-- Profile release pour Maven Central -->
     <profiles>
+        <!-- mvn test -Pintegration -Dgroups=integration -->
+        <profile>
+            <id>integration</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>integration</groups>
+                            <excludedGroups combine.self="override"></excludedGroups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile release pour Maven Central -->
         <profile>
         <id>release</id>
         <build>

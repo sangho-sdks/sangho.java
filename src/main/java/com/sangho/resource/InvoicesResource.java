@@ -65,6 +65,11 @@ public class InvoicesResource {
         return http.post("/invoices/" + id + "/send/", Map.of(), Invoice.class);
     }
 
+    public Map<String, Object> getPdfUrl(String id) {
+        http.assertSecretKey("invoices.getPdfUrl");
+        return http.get("/invoices/" + id + "/pdf/", null, new TypeReference<Map<String, Object>>() {});
+    }
+
     public Map<String, Object> options() {
         return http.options("/invoices/");
     }

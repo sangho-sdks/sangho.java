@@ -45,7 +45,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
 
     @Test
     void testAllValidPrefixesAccepted() {
-        String[] prefixes = {"sk_live_", "sk_test_", "pk_live_", "pk_test_"};
+        String[] prefixes = {"sk_prod_", "sk_test_", "pk_prod_", "pk_test_"};
         for (String prefix : prefixes) {
             assertDoesNotThrow(() ->
                 SanghoClient.builder()

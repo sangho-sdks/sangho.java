@@ -1,11 +1,15 @@
 package com.sangho.param;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class InvoiceCreateParams {
     private final String customer;
     private final Integer amount;
+    @JsonProperty("due_date")
     private final String dueDate;
 
     private InvoiceCreateParams(Builder b) {

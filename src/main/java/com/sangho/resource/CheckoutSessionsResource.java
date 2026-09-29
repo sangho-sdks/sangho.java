@@ -21,7 +21,8 @@ public class CheckoutSessionsResource {
     }
 
     public Map<String, Object> retrieve(String id) {
-        http.assertSecretKey("checkoutSessions.retrieve");
+        // Le backend autorise explicitement la clé publique sur cette action
+        // (page de confirmation côté navigateur) — ne pas la bloquer ici.
         return http.get(path + id + "/", null, MAP_TYPE);
     }
 
@@ -38,6 +39,11 @@ public class CheckoutSessionsResource {
     public void delete(String id) {
         http.assertSecretKey("checkoutSessions.delete");
         http.delete(path + id + "/");
+    }
+
+    public Map<String, Object> expire(String id) {
+        http.assertSecretKey("checkoutSessions.expire");
+        return http.post(path + id + "/expire/", Map.of(), Map.class);
     }
 
     public Map<String, Object> options() {

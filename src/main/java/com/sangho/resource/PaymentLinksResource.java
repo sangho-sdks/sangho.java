@@ -39,6 +39,16 @@ public class PaymentLinksResource {
         http.delete(path + id + "/");
     }
 
+    public Map<String, Object> archive(String id) {
+        http.assertSecretKey("paymentLinks.archive");
+        return http.post(path + id + "/archive/", Map.of(), Map.class);
+    }
+
+    public Map<String, Object> restore(String id) {
+        http.assertSecretKey("paymentLinks.restore");
+        return http.post(path + id + "/restore/", Map.of(), Map.class);
+    }
+
     public Map<String, Object> options() {
         return http.options(path);
     }

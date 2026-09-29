@@ -51,4 +51,9 @@ public class CustomersResource {
         TypeReference<ListResponse<Map<String, Object>>> ref = new TypeReference<>() {};
         return http.get("/customers/" + id + "/transactions/", params, ref);
     }
+
+    public Map<String, Object> listPaymentMethods(String id) {
+        http.assertSecretKey("customers.listPaymentMethods");
+        return http.get("/customers/" + id + "/payment-methods/", null, new TypeReference<Map<String, Object>>() {});
+    }
 }
