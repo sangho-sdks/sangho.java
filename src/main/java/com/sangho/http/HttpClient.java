@@ -6,188 +6,273 @@ import com.sangho.exception.*;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Client HTTP de l'API Sangho : erreurs typées, retry avec backoff exponentiel sur 429 / 5xx / erreurs réseau
+ * (miroir du {@code HttpClient} du SDK JS, {@code core/http.ts}).
+ */
 public class HttpClient {
 
+    /** Attend avant un nouvel essai ; remplaçable dans les tests. */
+    @FunctionalInterface
+    public interface Sleeper {
+        void sleep(long millis) throws InterruptedException;
+    }
+
+    @FunctionalInterface
+    private interface Parser<T> {
+        T parse(byte[] body) throws IOException;
+    }
+
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
-    private static final int[] RETRY_DELAYS_MS = {500, 1000, 2000};
-    private static final int[] RETRYABLE_CODES = {429, 500, 502, 503, 504};
+    /** Le backend distingue les clés de production ("prod") des clés de test ("test") : il n'existe pas de préfixe "live". */
+    private static final String[] VALID_PREFIXES = {"pk_prod_", "sk_prod_", "pk_test_", "sk_test_"};
+    public static final int DEFAULT_MAX_RETRIES = 3;
 
     private final OkHttpClient okHttp;
     private final ObjectMapper mapper;
     private final String baseUrl;
+    private final int maxRetries;
+    private final long timeoutMillis;
+    private final Sleeper sleeper;
     public final ApiKeyType keyType;
+    public final boolean sandbox;
 
     public HttpClient(String apiKey, String baseUrl, Duration timeout) {
+        this(apiKey, baseUrl, timeout, DEFAULT_MAX_RETRIES, Thread::sleep);
+    }
+
+    public HttpClient(String apiKey, String baseUrl, Duration timeout, int maxRetries, Sleeper sleeper) {
         validateApiKey(apiKey);
-        this.baseUrl  = baseUrl.replaceAll("/+$", "");
-        this.keyType  = apiKey.startsWith("pk_") ? ApiKeyType.PUBLIC : ApiKeyType.SECRET;
-        this.mapper   = new ObjectMapper();
-        this.okHttp   = new OkHttpClient.Builder()
+        validateBaseUrl(baseUrl);
+        this.baseUrl       = baseUrl.replaceAll("/+$", "");
+        this.keyType       = apiKey.startsWith("pk_") ? ApiKeyType.PUBLIC : ApiKeyType.SECRET;
+        this.sandbox       = apiKey.startsWith("pk_test_") || apiKey.startsWith("sk_test_");
+        this.maxRetries    = maxRetries;
+        this.sleeper       = sleeper;
+        this.timeoutMillis = timeout.toMillis();
+        this.mapper        = new ObjectMapper();
+        String environment = sandbox ? "sandbox" : "live";
+        this.okHttp        = new OkHttpClient.Builder()
             .connectTimeout(timeout)
             .readTimeout(timeout)
-            .addInterceptor(chain -> {
-                Request req = chain.request().newBuilder()
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .header("User-Agent", "sangho-java/1.0.0")
-                    .build();
-                return chain.proceed(req);
-            })
+            .writeTimeout(timeout)
+            .followRedirects(false)  // un endpoint d'API ne redirige pas : ne pas renvoyer la clé ailleurs
+            .addInterceptor(chain -> chain.proceed(chain.request().newBuilder()
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .header("User-Agent", "sangho-java/" + SdkVersion.VERSION)
+                .header("X-Sangho-SDK", "java/" + SdkVersion.VERSION)
+                .header("X-Sangho-Environment", environment)
+                .build()))
             .build();
     }
 
     public void assertSecretKey(String method) {
         if (keyType == ApiKeyType.PUBLIC) {
             throw new SanghoPublicKeyException(
-                "Method `" + method + "` requires a secret key (sk_…). You provided a public key (pk_…).",
-                "public_key_not_allowed", 403, Map.of()
+                "Method `" + method + "` requires a secret key (sk_…). You provided a public key (pk_…)."
             );
         }
     }
 
+    // ── Verbes ────────────────────────────────────────────────────────────────
+
     public <T> T get(String path, Map<String, String> params, Class<T> type) {
-        HttpUrl parsed = HttpUrl.parse(baseUrl + path);
-        if (parsed == null) throw new SanghoException("Invalid URL: " + baseUrl + path);
-        HttpUrl.Builder urlBuilder = parsed.newBuilder();
-        if (params != null) params.forEach(urlBuilder::addQueryParameter);
-        return execute(new Request.Builder().url(urlBuilder.build()).get().build(), type);
+        return execute(() -> getRequest(path, params), classParser(type));
     }
 
     public <T> T get(String path, Map<String, String> params, TypeReference<T> typeRef) {
-        HttpUrl parsed = HttpUrl.parse(baseUrl + path);
-        if (parsed == null) throw new SanghoException("Invalid URL: " + baseUrl + path);
-        HttpUrl.Builder urlBuilder = parsed.newBuilder();
-        if (params != null) params.forEach(urlBuilder::addQueryParameter);
-        return execute(new Request.Builder().url(urlBuilder.build()).get().build(), typeRef);
+        return execute(() -> getRequest(path, params), body -> mapper.readValue(body, typeRef));
     }
 
     public <T> T post(String path, Object body, Class<T> type) {
         String idempotencyKey = UUID.randomUUID().toString();
-        RequestBody rb = toRequestBody(body);
-        Request req = new Request.Builder()
-            .url(baseUrl + path)
-            .header("Idempotency-Key", idempotencyKey)
-            .post(rb).build();
-        return execute(req, type);
+        return execute(() -> new Request.Builder().url(url(path)).header("Idempotency-Key", idempotencyKey)
+            .post(toRequestBody(body)).build(), classParser(type));
     }
 
     public <T> T patch(String path, Object body, Class<T> type) {
-        Request req = new Request.Builder().url(baseUrl + path).patch(toRequestBody(body)).build();
-        return execute(req, type);
+        return execute(() -> new Request.Builder().url(url(path)).patch(toRequestBody(body)).build(), classParser(type));
     }
 
     public void delete(String path) {
-        execute(new Request.Builder().url(baseUrl + path).delete().build(), Void.class);
+        delete(path, Void.class);
+    }
+
+    /** DELETE qui retourne le corps de la réponse (ex. payment-intents : {@code DELETE} annule et renvoie l'objet). */
+    public <T> T delete(String path, Class<T> type) {
+        return execute(() -> new Request.Builder().url(url(path)).delete().build(), classParser(type));
     }
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> options(String path) {
-        Request req = new Request.Builder().url(baseUrl + path).method("OPTIONS", null).build();
-        return execute(req, Map.class);
+        return execute(() -> new Request.Builder().url(url(path)).method("OPTIONS", null).build(), classParser(Map.class));
+    }
+
+    // ── Interne ───────────────────────────────────────────────────────────────
+
+    private HttpUrl url(String path) {
+        HttpUrl parsed = HttpUrl.parse(baseUrl + path);
+        if (parsed == null) throw new SanghoException("Invalid URL: " + baseUrl + path);
+        return parsed;
+    }
+
+    private Request getRequest(String path, Map<String, String> params) {
+        HttpUrl.Builder builder = url(path).newBuilder();
+        if (params != null) params.forEach((k, v) -> { if (v != null) builder.addQueryParameter(k, v); });
+        return new Request.Builder().url(builder.build()).get().build();
     }
 
     private RequestBody toRequestBody(Object body) {
         try {
-            return RequestBody.create(mapper.writeValueAsBytes(body), JSON);
+            // Les objets de paramètres (builders) n'ont pas de getters : ils se sérialisent via toMap().
+            Object payload = body instanceof com.sangho.param.RequestParams p ? p.toMap() : body;
+            return RequestBody.create(mapper.writeValueAsBytes(payload), JSON);
         } catch (IOException e) {
             throw new SanghoException("Failed to serialize request body: " + e.getMessage());
         }
     }
 
-    private <T> T execute(Request req, Class<T> type) {
-        for (int delay : RETRY_DELAYS_MS) {
-            try (Response resp = okHttp.newCall(req).execute()) {
-                if (isRetryable(resp.code())) {
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new SanghoException("HTTP request interrupted: " + e.getMessage());
-                    }
-                    continue;
-                }
-                return deserialize(resp, type);
+    private <T> Parser<T> classParser(Class<T> type) {
+        return body -> type == Void.class || body.length == 0 ? null : mapper.readValue(body, type);
+    }
+
+    @FunctionalInterface
+    private interface RequestFactory {
+        Request build();
+    }
+
+    private <T> T execute(RequestFactory factory, Parser<T> parser) {
+        int attempt = 0;
+        while (true) {
+            try (Response resp = okHttp.newCall(factory.build()).execute()) {
+                byte[] body = resp.body() == null ? new byte[0] : resp.body().bytes();
+                if (resp.isSuccessful()) return resp.code() == 204 ? null : parse(parser, body);
+
+                SanghoException error = buildError(resp.code(), body, resp);
+                if (!isRetryable(error) || attempt >= maxRetries) throw error;
+                pause(error instanceof SanghoRateLimitException rl && rl.getRetryAfter() > 0
+                    ? rl.getRetryAfter() * 1000L : backoff(attempt));
             } catch (IOException e) {
-                throw new SanghoException("HTTP request failed: " + e.getMessage());
+                // Aucune réponse du serveur (DNS, connexion refusée, délai dépassé…) : transitoire, on réessaie.
+                if (attempt >= maxRetries) {
+                    throw e instanceof InterruptedIOException
+                        ? new SanghoTimeoutException(timeoutMillis)
+                        : new SanghoNetworkException(e.getMessage());
+                }
+                pause(backoff(attempt));
             }
+            attempt++;
         }
-        try (Response resp = okHttp.newCall(req).execute()) {
-            return deserialize(resp, type);
+    }
+
+    private <T> T parse(Parser<T> parser, byte[] body) {
+        try {
+            return parser.parse(body);
         } catch (IOException e) {
-            throw new SanghoException("HTTP request failed: " + e.getMessage());
+            throw new SanghoException("Invalid JSON in response: " + e.getMessage());
         }
     }
 
-    private <T> T execute(Request req, TypeReference<T> typeRef) {
-        try (Response resp = okHttp.newCall(req).execute()) {
-            return deserializeRef(resp, typeRef);
-        } catch (IOException e) {
-            throw new SanghoException("HTTP request failed: " + e.getMessage());
+    private void pause(long millis) {
+        try {
+            sleeper.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SanghoException("HTTP request interrupted: " + e.getMessage());
         }
     }
 
-    private <T> T deserialize(Response resp, Class<T> type) throws IOException {
-        if (resp.code() == 204 || type == Void.class) return null;
-        ResponseBody responseBody = resp.body();
-        if (responseBody == null) throw new SanghoException("Response body is null");
-        byte[] body = responseBody.bytes();
-        if (resp.isSuccessful()) return mapper.readValue(body, type);
-        raiseForStatus(resp.code(), body, resp);
-        return null;
+    private static long backoff(int attempt) {
+        return (1L << attempt) * 500L;
     }
 
-    private <T> T deserializeRef(Response resp, TypeReference<T> typeRef) throws IOException {
-        if (resp.code() == 204) return null;
-        ResponseBody responseBody = resp.body();
-        if (responseBody == null) throw new SanghoException("Response body is null");
-        byte[] body = responseBody.bytes();
-        if (resp.isSuccessful()) return mapper.readValue(body, typeRef);
-        raiseForStatus(resp.code(), body, resp);
-        return null;
+    /** 429 et 5xx sont transitoires ; les autres 4xx (400/401/403/404/409/422) sont permanents : jamais de retry. */
+    private static boolean isRetryable(SanghoException error) {
+        return error instanceof SanghoRateLimitException || error.getStatusCode() >= 500;
     }
 
     @SuppressWarnings("unchecked")
-    private void raiseForStatus(int status, byte[] body, Response resp) throws IOException {
-        Map<String, Object> data = mapper.readValue(body, Map.class);
-        String message = (String) data.getOrDefault("message", data.getOrDefault("detail", "API error"));
-        String code    = (String) data.get("code");
+    private SanghoException buildError(int status, byte[] body, Response resp) {
+        Map<String, Object> data;
+        try {
+            Object parsed = body.length == 0 ? Map.of() : mapper.readValue(body, Object.class);
+            data = parsed instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+        } catch (IOException e) {
+            data = Map.of();
+        }
+        Object rawMessage = data.get("message") != null ? data.get("message") : data.get("detail");
+        String message = rawMessage instanceof String s ? s : rawMessage != null ? String.valueOf(rawMessage) : "API error";
+        // Insensible à la casse : le backend envoie tantôt "PUBLIC_KEY_NOT_ALLOWED", tantôt "public_key_not_allowed".
+        String code = data.get("code") instanceof String c ? c.toLowerCase() : "";
 
-        switch (status) {
-            case 401 -> throw new SanghoAuthException(message, "authentication_error", 401, data);
-            case 403 -> {
-                if ("public_key_not_allowed".equals(code))
-                    throw new SanghoPublicKeyException(message, code, 403, data);
-                throw new SanghoPermissionException(message, "permission_denied", 403, data);
-            }
-            case 404 -> throw new SanghoNotFoundException(message, "not_found", 404, data);
-            case 409 -> throw new SanghoIdempotencyException("Idempotency key conflict.", "idempotency_conflict", 409, data);
-            case 422 -> throw new SanghoValidationException(message, data);
-            case 429 -> {
-                int retry = ((Number) data.getOrDefault("retry_later",
-                    parseInt(resp.header("Retry-After", "60")))).intValue();
-                throw new SanghoRateLimitException(retry);
-            }
-            default  -> throw new SanghoException(message, "api_error", status, data);
+        return switch (status) {
+            case 401 -> new SanghoAuthException(message, data);
+            case 403 -> "public_key_not_allowed".equals(code)
+                ? new SanghoPublicKeyException(message, data)
+                : new SanghoPermissionException(message, data);
+            case 404 -> new SanghoNotFoundException(message, data);
+            case 409 -> new SanghoIdempotencyException(data);
+            case 422 -> new SanghoValidationException(validationMessage(data, message), data);
+            case 429 -> new SanghoRateLimitException(data.get("message") instanceof String s ? s : null,
+                retryAfter(resp, data), data);
+            default  -> new SanghoException(message, null, status, data);
+        };
+    }
+
+    private static String validationMessage(Map<String, Object> data, String fallback) {
+        Object fields = data.get("detail") instanceof Map<?, ?> ? data.get("detail") : data.get("errors");
+        if (!(fields instanceof Map<?, ?> map) || map.isEmpty()) return fallback;
+        StringBuilder sb = new StringBuilder();
+        map.forEach((k, v) -> {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append(k).append(": ").append(v instanceof Iterable<?> it ? String.join(", ", stringify(it)) : v);
+        });
+        return sb.toString();
+    }
+
+    private static java.util.List<String> stringify(Iterable<?> items) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        items.forEach(i -> out.add(String.valueOf(i)));
+        return out;
+    }
+
+    private static int retryAfter(Response resp, Map<String, Object> data) {
+        Object value = data.get("retry_after");
+        if (value instanceof Number n) return (int) Math.ceil(n.doubleValue());
+        try {
+            return (int) Math.ceil(Double.parseDouble(resp.header("Retry-After", "60")));
+        } catch (NumberFormatException e) {
+            return 60;
         }
     }
 
-    private boolean isRetryable(int code) {
-        for (int c : RETRYABLE_CODES) if (c == code) return true;
-        return false;
-    }
-
-    private static int parseInt(String s) {
-        try { return Integer.parseInt(s); } catch (NumberFormatException e) { return 60; }
-    }
-
     private static void validateApiKey(String key) {
-        String[] prefixes = {"pk_live_", "sk_live_", "pk_test_", "sk_test_"};
-        for (String p : prefixes) if (key.startsWith(p)) return;
-        throw new IllegalArgumentException("Invalid API key format. Expected prefix: pk_live_, sk_live_, pk_test_, sk_test_");
+        if (key == null || key.isBlank()) throw new IllegalArgumentException("apiKey must be a non-empty string.");
+        for (String p : VALID_PREFIXES) {
+            if (key.startsWith(p)) {
+                if (key.length() < 20) throw new IllegalArgumentException("API key is too short.");
+                return;
+            }
+        }
+        throw new IllegalArgumentException(
+            "Invalid API key format. Keys must start with one of: " + String.join(", ", VALID_PREFIXES) + "."
+        );
+    }
+
+    private static void validateBaseUrl(String baseUrl) {
+        HttpUrl parsed = baseUrl == null ? null : HttpUrl.parse(baseUrl);
+        if (parsed == null) throw new IllegalArgumentException("Invalid baseUrl: \"" + baseUrl + "\".");
+        boolean local = parsed.host().equals("localhost") || parsed.host().equals("127.0.0.1");
+        if (!parsed.isHttps() && !local) {
+            throw new IllegalArgumentException("Refusing to send API keys over a non-HTTPS baseUrl: \"" + baseUrl
+                + "\". Use an https:// URL (localhost/127.0.0.1 are exempt for local development).");
+        }
     }
 }

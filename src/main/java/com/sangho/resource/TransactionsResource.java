@@ -24,6 +24,16 @@ public class TransactionsResource {
         return http.get("/transactions/" + id + "/", null, Transaction.class);
     }
 
+    public Transaction update(String id, Map<String, Object> payload) {
+        http.assertSecretKey("transactions.update");
+        return http.patch("/transactions/" + id + "/", payload, Transaction.class);
+    }
+
+    public Transaction cancel(String id) {
+        http.assertSecretKey("transactions.cancel");
+        return http.post("/transactions/" + id + "/cancel/", Map.of(), Transaction.class);
+    }
+
     public Map<String, Object> options() {
         return http.options("/transactions/");
     }

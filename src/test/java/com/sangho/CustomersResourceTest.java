@@ -33,12 +33,12 @@ class CustomersResourceTest {
     @Test
     void testListCustomers() {
         server.enqueue(new MockResponse()
-            .setBody("{\"count\":1,\"next\":null,\"previous\":null,\"results\":[{\"id\":\"cust_1\",\"email\":\"a@b.com\"}]}")
+            .setBody("{\"count\":1,\"next\":null,\"previous\":null,\"data\":[{\"id\":\"cust_1\",\"email\":\"a@b.com\"}]}")
             .addHeader("Content-Type", "application/json"));
 
         ListResponse<Customer> result = client.customers().list(null);
         assertEquals(1, result.count());
-        assertEquals("cust_1", result.results().get(0).id());
+        assertEquals("cust_1", result.data().get(0).id());
     }
 
     @Test

@@ -40,16 +40,6 @@ public class ProductsResource {
         http.delete("/products/" + id + "/");
     }
 
-    public Product archive(String id) {
-        http.assertSecretKey("products.archive");
-        return http.post("/products/" + id + "/archive/", Map.of(), Product.class);
-    }
-
-    public Product restore(String id) {
-        http.assertSecretKey("products.restore");
-        return http.post("/products/" + id + "/restore/", Map.of(), Product.class);
-    }
-
     public Map<String, Object> options() {
         return http.options("/products/");
     }

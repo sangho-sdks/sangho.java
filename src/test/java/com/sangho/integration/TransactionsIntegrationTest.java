@@ -17,8 +17,8 @@ class TransactionsIntegrationTest extends IntegrationTestBase {
         ListResponse<Transaction> result = client.transactions().list(
             Map.of("page_size", "5")
         );
-        assertNotNull(result.results());
-        assertTrue(result.results().size() <= 5);
+        assertNotNull(result.data());
+        assertTrue(result.data().size() <= 5);
     }
 
     @Test
@@ -26,7 +26,7 @@ class TransactionsIntegrationTest extends IntegrationTestBase {
         ListResponse<Transaction> result = client.transactions().list(
             Map.of("ordering", "-created_at", "page_size", "10")
         );
-        assertNotNull(result.results());
+        assertNotNull(result.data());
     }
 
     @Test

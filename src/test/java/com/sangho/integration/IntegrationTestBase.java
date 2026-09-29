@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Tag;
  * Variables d'environnement requises :
  *   SANGHO_TEST_SECRET_KEY   sk_test_xxx
  *   SANGHO_TEST_PUBLIC_KEY   pk_test_xxx  (optionnel)
- *   SANGHO_API_BASE_URL      https://api.sangho.com/v1 (optionnel)
+ *   SANGHO_API_BASE_URL      https://api.sangho.ga/v1 (optionnel)
  *
  * Lancement :
  *   SANGHO_TEST_SECRET_KEY=sk_test_xxx mvn test -Dgroups=integration
@@ -29,7 +29,7 @@ public abstract class IntegrationTestBase {
         String secretKey = System.getenv("SANGHO_TEST_SECRET_KEY");
         String publicKey = System.getenv("SANGHO_TEST_PUBLIC_KEY");
 
-        baseUrl = System.getenv().getOrDefault("SANGHO_API_BASE_URL", "https://api.sangho.com/v1");
+        baseUrl = System.getenv().getOrDefault("SANGHO_API_BASE_URL", "https://api.sangho.ga/v1");
 
         org.junit.jupiter.api.Assumptions.assumeTrue(
             secretKey != null && !secretKey.isBlank(),

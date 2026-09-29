@@ -6,46 +6,40 @@ import com.sangho.model.ListResponse;
 
 import java.util.Map;
 
-/** Applications : list, retrieve, create, update, delete, keys, options. */
-public class AppsResource {
+/** Adresses : list, retrieve, create, update, delete, options. */
+public class AddressesResource {
 
     private static final TypeReference<ListResponse<Map<String, Object>>> LIST_TYPE = new TypeReference<>() {};
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private final HttpClient http;
 
-    public AppsResource(HttpClient http) { this.http = http; }
+    public AddressesResource(HttpClient http) { this.http = http; }
 
-    private static final String PATH = "/apps/";
+    private static final String PATH = "/addresses/";
 
     public ListResponse<Map<String, Object>> list(Map<String, String> params) {
-        http.assertSecretKey("apps.list");
+        http.assertSecretKey("addresses.list");
         return http.get(PATH, params, LIST_TYPE);
     }
 
     public Map<String, Object> retrieve(String id) {
-        http.assertSecretKey("apps.retrieve");
+        http.assertSecretKey("addresses.retrieve");
         return http.get(PATH + id + "/", null, MAP_TYPE);
     }
 
     public Map<String, Object> create(Map<String, Object> payload) {
-        http.assertSecretKey("apps.create");
+        http.assertSecretKey("addresses.create");
         return http.post(PATH, payload, Map.class);
     }
 
     public Map<String, Object> update(String id, Map<String, Object> payload) {
-        http.assertSecretKey("apps.update");
+        http.assertSecretKey("addresses.update");
         return http.patch(PATH + id + "/", payload, Map.class);
     }
 
     public void delete(String id) {
-        http.assertSecretKey("apps.delete");
+        http.assertSecretKey("addresses.delete");
         http.delete(PATH + id + "/");
-    }
-
-    /** Paire de clés (publique / secrète) actuelle de l'application. */
-    public Map<String, Object> keys(String id) {
-        http.assertSecretKey("apps.keys");
-        return http.get(PATH + id + "/keys/", null, MAP_TYPE);
     }
 
     public Map<String, Object> options() {

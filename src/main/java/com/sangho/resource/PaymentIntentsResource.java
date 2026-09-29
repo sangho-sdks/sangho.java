@@ -45,6 +45,17 @@ public class PaymentIntentsResource {
         return http.post("/payment-intents/" + id + "/cancel/", payload != null ? payload : Map.of(), PaymentIntent.class);
     }
 
+    public PaymentIntent update(String id, Map<String, Object> payload) {
+        http.assertSecretKey("paymentIntents.update");
+        return http.patch("/payment-intents/" + id + "/", payload, PaymentIntent.class);
+    }
+
+    /** {@code DELETE} est un alias de {@link #cancel} côté API (comme Stripe : on annule, on ne supprime pas). */
+    public PaymentIntent delete(String id) {
+        http.assertSecretKey("paymentIntents.delete");
+        return http.delete("/payment-intents/" + id + "/", PaymentIntent.class);
+    }
+
     public Map<String, Object> options() {
         return http.options("/payment-intents/");
     }

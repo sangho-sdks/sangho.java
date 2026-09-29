@@ -46,9 +46,15 @@ public class CustomersResource {
         return http.options("/customers/");
     }
 
-    public ListResponse<Map<String, Object>> listTransactions(String id, Map<String, String> params) {
-        http.assertSecretKey("customers.listTransactions");
+    /**
+     * Moyens de paiement d'un client : {@code GET /payment-methods/?customer=<id>} (la route
+     * {@code /customers/{id}/payment-methods/} n'existe pas côté API).
+     */
+    public ListResponse<Map<String, Object>> listPaymentMethods(String id, Map<String, String> params) {
+        http.assertSecretKey("customers.listPaymentMethods");
+        Map<String, String> query = new java.util.LinkedHashMap<>(params != null ? params : Map.of());
+        query.put("customer", id);
         TypeReference<ListResponse<Map<String, Object>>> ref = new TypeReference<>() {};
-        return http.get("/customers/" + id + "/transactions/", params, ref);
+        return http.get("/payment-methods/", query, ref);
     }
 }

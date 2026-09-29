@@ -59,8 +59,8 @@ class ProductsIntegrationTest extends IntegrationTestBase {
         ListResponse<Product> result = client.products().list(
             ProductListParams.builder().pageSize(5).build()
         );
-        assertNotNull(result.results());
-        assertTrue(result.results().size() <= 5);
+        assertNotNull(result.data());
+        assertTrue(result.data().size() <= 5);
     }
 
     @Test
@@ -70,19 +70,6 @@ class ProductsIntegrationTest extends IntegrationTestBase {
             ProductUpdateParams.builder().price(9999).build()
         );
         assertEquals(9999, updated.price());
-    }
-
-    @Test
-    void testArchiveAndRestoreProduct() {
-        Product product  = client.products().create(
-            ProductCreateParams.builder().name(uniqueName("Archive")).price(1000).build()
-        );
-        Product archived = client.products().archive(product.id());
-        assertNotNull(archived.status());
-
-        Product restored = client.products().restore(product.id());
-        assertEquals("active", restored.status());
-        client.products().delete(product.id());
     }
 
     @Test

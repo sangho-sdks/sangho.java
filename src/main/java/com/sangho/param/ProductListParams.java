@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class ProductListParams {
+public class ProductListParams implements RequestParams {
     private final String search;
     private final String status;
     private final String ordering;

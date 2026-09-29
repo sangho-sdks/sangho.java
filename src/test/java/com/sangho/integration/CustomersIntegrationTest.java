@@ -69,8 +69,8 @@ class CustomersIntegrationTest extends IntegrationTestBase {
         );
 
         assertNotNull(result);
-        assertNotNull(result.results());
-        assertTrue(result.results().size() <= 5);
+        assertNotNull(result.data());
+        assertTrue(result.data().size() <= 5);
         assertTrue(result.count() >= 0);
     }
 
@@ -81,7 +81,7 @@ class CustomersIntegrationTest extends IntegrationTestBase {
             CustomerListParams.builder().status("active").pageSize(10).build()
         );
 
-        result.results().forEach(c ->
+        result.data().forEach(c ->
             assertEquals("active", c.status(), "All results should have status=active")
         );
     }
@@ -93,7 +93,7 @@ class CustomersIntegrationTest extends IntegrationTestBase {
             CustomerListParams.builder().search(sharedCustomer.email()).build()
         );
 
-        boolean found = result.results().stream()
+        boolean found = result.data().stream()
             .anyMatch(c -> c.id().equals(sharedCustomer.id()));
         assertTrue(found, "Shared customer should appear in search results");
     }
@@ -124,14 +124,6 @@ class CustomersIntegrationTest extends IntegrationTestBase {
 
         assertThrows(SanghoNotFoundException.class,
             () -> client.customers().retrieve(temp.id()));
-    }
-
-    @Test
-    @Order(8)
-    void testListTransactionsForCustomer() {
-        var result = client.customers().listTransactions(sharedCustomer.id(), null);
-        assertNotNull(result);
-        assertNotNull(result.results());
     }
 
     // ── Error handling ────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class SubscriptionCreateParams {
+public class SubscriptionCreateParams implements RequestParams {
     private final String customer;
     private final String plan;
 

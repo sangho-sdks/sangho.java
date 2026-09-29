@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class RefundCreateParams {
+public class RefundCreateParams implements RequestParams {
     private final String transaction;
     private final Integer amount;
     private final String reason;

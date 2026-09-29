@@ -62,18 +62,15 @@ class InvoicesIntegrationTest extends IntegrationTestBase {
         ListResponse<Invoice> result = client.invoices().list(
             Map.of("page_size", "5")
         );
-        assertNotNull(result.results());
+        assertNotNull(result.data());
     }
 
     @Test
-    void testFinalizeAndVoidInvoice() {
+    void testVoidInvoice() {
         Invoice invoice   = client.invoices().create(
             InvoiceCreateParams.builder().customer(sharedCustomer.id()).amount(3_000).build()
         );
-        Invoice finalized = client.invoices().finalize(invoice.id());
-        assertNotNull(finalized.status());
-
-        Invoice voided = client.invoices().voidInvoice(finalized.id());
+        Invoice voided = client.invoices().voidInvoice(invoice.id());
         assertEquals("void", voided.status());
     }
 

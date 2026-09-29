@@ -17,8 +17,8 @@ class RefundsIntegrationTest extends IntegrationTestBase {
         ListResponse<Refund> result = client.refunds().list(
             Map.of("page_size", "5")
         );
-        assertNotNull(result.results());
-        assertTrue(result.results().size() <= 5);
+        assertNotNull(result.data());
+        assertTrue(result.data().size() <= 5);
     }
 
     @Test

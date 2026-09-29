@@ -1,9 +1,10 @@
 package com.sangho.exception;
+
 import java.util.Map;
-/** 403 — Forbidden. */
+
+/** 403 — permissions insuffisantes. */
 public class SanghoPermissionException extends SanghoException {
-    public SanghoPermissionException(String message, String code, int statusCode, Map<String, Object> raw) {
-        super(message, code, statusCode, raw);
+    public SanghoPermissionException(String message, Map<String, Object> raw) {
+        super(message, "PERMISSION_ERROR", null, 403, raw);
     }
-    public SanghoPermissionException(String message) { super(message, "api_error", 0, Map.of()); }
 }

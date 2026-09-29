@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class PaymentIntentCreateParams {
+public class PaymentIntentCreateParams implements RequestParams {
     private final Integer amount;
     private final String customer;
     private final String paymentMethod;

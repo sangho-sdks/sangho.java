@@ -45,11 +45,6 @@ public class InvoicesResource {
         return http.post("/invoices/" + id + "/pay/", payload != null ? payload : Map.of(), Invoice.class);
     }
 
-    public Invoice finalize(String id) {
-        http.assertSecretKey("invoices.finalize");
-        return http.post("/invoices/" + id + "/finalize/", Map.of(), Invoice.class);
-    }
-
     public Invoice voidInvoice(String id) {
         http.assertSecretKey("invoices.void");
         return http.post("/invoices/" + id + "/void/", Map.of(), Invoice.class);
@@ -63,6 +58,12 @@ public class InvoicesResource {
     public Invoice send(String id) {
         http.assertSecretKey("invoices.send");
         return http.post("/invoices/" + id + "/send/", Map.of(), Invoice.class);
+    }
+
+    /** URL signée et expirante du PDF : {@code url}, {@code expires_at}. */
+    public Map<String, Object> getPdfUrl(String id) {
+        http.assertSecretKey("invoices.getPdfUrl");
+        return http.get("/invoices/" + id + "/pdf/", null, new TypeReference<Map<String, Object>>() {});
     }
 
     public Map<String, Object> options() {

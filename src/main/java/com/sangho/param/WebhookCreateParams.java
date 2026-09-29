@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class WebhookCreateParams {
+public class WebhookCreateParams implements RequestParams {
     private final String url;
     private final String description;
 

@@ -72,8 +72,8 @@ class PaymentIntentsIntegrationTest extends IntegrationTestBase {
             PaymentIntentListParams.builder().pageSize(5).build()
         );
 
-        assertNotNull(result.results());
-        assertTrue(result.results().size() <= 5);
+        assertNotNull(result.data());
+        assertTrue(result.data().size() <= 5);
     }
 
     @Test

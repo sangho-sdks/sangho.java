@@ -3,7 +3,7 @@ package com.sangho.param;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class InvoiceCreateParams {
+public class InvoiceCreateParams implements RequestParams {
     private final String customer;
     private final Integer amount;
     private final String dueDate;

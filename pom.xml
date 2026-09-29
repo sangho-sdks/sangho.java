@@ -7,12 +7,12 @@
 
     <groupId>com.sangho</groupId>
     <artifactId>sangho-java</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.4</version>
     <packaging>jar</packaging>
 
     <name>Sangho Java SDK</name>
     <description>SDK officiel Java pour l'API Sangho</description>
-    <url>https://docs.sangho.com</url>
+    <url>https://docs.sangho.ga/api/sdks/java/</url>
 
     <licenses>
         <license>
@@ -24,19 +24,18 @@
     <developers>
         <developer>
         <name>Sangho</name>
-        <email>dev@sangho.com</email>
+        <email>nels.holy.allg@gmail.com</email>
         </developer>
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/sangho-sdks/sangho-java.git</connection>
-        <url>https://github.com/sangho-sdks/sangho-java</url>
+        <connection>scm:git:git://github.com/sangho-sdks/sangho.java.git</connection>
+        <url>https://github.com/sangho-sdks/sangho.java</url>
     </scm>
 
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

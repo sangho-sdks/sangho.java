@@ -61,7 +61,7 @@ class WebhooksIntegrationTest extends IntegrationTestBase {
     @Test
     void testListWebhooks() {
         var result = client.webhooks().list(null);
-        assertNotNull(result.results());
+        assertNotNull(result.data());
     }
 
     @Test

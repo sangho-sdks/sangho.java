@@ -63,6 +63,27 @@ public class WebhooksResource {
         return http.post("/webhooks/" + id + "/deliveries/" + deliveryId + "/retry/", Map.of(), Map.class);
     }
 
+    public Webhook disable(String id) {
+        http.assertSecretKey("webhooks.disable");
+        return http.post("/webhooks/" + id + "/disable/", Map.of(), Webhook.class);
+    }
+
+    public Webhook enable(String id) {
+        http.assertSecretKey("webhooks.enable");
+        return http.post("/webhooks/" + id + "/enable/", Map.of(), Webhook.class);
+    }
+
+    public ListResponse<Map<String, Object>> listDeliveries(String id, Map<String, String> params) {
+        http.assertSecretKey("webhooks.listDeliveries");
+        TypeReference<ListResponse<Map<String, Object>>> ref = new TypeReference<>() {};
+        return http.get("/webhooks/" + id + "/deliveries/", params, ref);
+    }
+
+    public Map<String, Object> retrieveDelivery(String id, String deliveryId) {
+        http.assertSecretKey("webhooks.retrieveDelivery");
+        return http.get("/webhooks/" + id + "/deliveries/" + deliveryId + "/", null, new TypeReference<Map<String, Object>>() {});
+    }
+
     public Map<String, Object> options() {
         return http.options("/webhooks/");
     }
@@ -107,7 +128,7 @@ public class WebhooksResource {
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String expected = HexFormat.of().formatHex(mac.doFinal(combined));
 
-            if (!expected.equals(v1))
+            if (!java.security.MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), v1.getBytes(StandardCharsets.UTF_8)))
                 throw new SanghoException("Webhook signature mismatch.", "invalid_signature", 0, Map.of());
 
             return new com.fasterxml.jackson.databind.ObjectMapper()
