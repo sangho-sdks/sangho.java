@@ -3,6 +3,7 @@ package com.sangho.http;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sangho.exception.*;
+import com.sangho.param.RequestOptions;
 import okhttp3.*;
 
 import java.io.IOException;
@@ -92,9 +93,31 @@ public class HttpClient {
     }
 
     public <T> T post(String path, Object body, Class<T> type) {
-        String idempotencyKey = UUID.randomUUID().toString();
-        return execute(() -> new Request.Builder().url(url(path)).header("Idempotency-Key", idempotencyKey)
-            .post(toRequestBody(body)).build(), classParser(type));
+        return post(path, body, type, (String) null);
+    }
+
+    public <T> T post(String path, Object body, Class<T> type, RequestOptions options) {
+        return post(path, body, type, options == null ? null : options.getIdempotencyKey());
+    }
+
+    /**
+     * POST avec en-tête {@code Idempotency-Key}. La clé peut être fournie en argument ou via {@code idempotency_key}
+     * dans un corps {@code Map}. Sans clé, une nouvelle est générée et un POST n'est PAS rejoué après un délai dépassé /
+     * une erreur réseau (le serveur a pu le traiter : risque de doublon) ; avec une clé fournie, ce rejeu est sûr.
+     */
+    public <T> T post(String path, Object body, Class<T> type, String idempotencyKey) {
+        Object payload = body;
+        String explicit = idempotencyKey != null && !idempotencyKey.isEmpty() ? idempotencyKey : null;
+        if (body instanceof Map<?, ?> map && map.containsKey("idempotency_key")) {
+            Map<Object, Object> copy = new java.util.LinkedHashMap<>(map);
+            Object fromBody = copy.remove("idempotency_key");
+            if (explicit == null && fromBody instanceof String s && !s.isEmpty()) explicit = s;
+            payload = copy;
+        }
+        String key = explicit != null ? explicit : UUID.randomUUID().toString();
+        final Object finalPayload = payload;
+        return execute(() -> new Request.Builder().url(url(path)).header("Idempotency-Key", key)
+            .post(toRequestBody(finalPayload)).build(), classParser(type), explicit != null);
     }
 
     public <T> T patch(String path, Object body, Class<T> type) {
@@ -149,6 +172,10 @@ public class HttpClient {
     }
 
     private <T> T execute(RequestFactory factory, Parser<T> parser) {
+        return execute(factory, parser, true);
+    }
+
+    private <T> T execute(RequestFactory factory, Parser<T> parser, boolean retryTransport) {
         int attempt = 0;
         while (true) {
             try (Response resp = okHttp.newCall(factory.build()).execute()) {
@@ -160,8 +187,9 @@ public class HttpClient {
                 pause(error instanceof SanghoRateLimitException rl && rl.getRetryAfter() > 0
                     ? rl.getRetryAfter() * 1000L : backoff(attempt));
             } catch (IOException e) {
-                // Aucune réponse du serveur (DNS, connexion refusée, délai dépassé…) : transitoire, on réessaie.
-                if (attempt >= maxRetries) {
+                // Aucune réponse du serveur (DNS, connexion refusée, délai dépassé…) : transitoire, on réessaie
+                // (sauf pour un POST sans clé d'idempotence fournie : le serveur a pu le traiter).
+                if (!retryTransport || attempt >= maxRetries) {
                     throw e instanceof InterruptedIOException
                         ? new SanghoTimeoutException(timeoutMillis)
                         : new SanghoNetworkException(e.getMessage());
@@ -207,6 +235,12 @@ public class HttpClient {
         } catch (IOException e) {
             data = Map.of();
         }
+        // Les routes Connect renvoient {"error": {"code", "message"}} : on aplatit pour lire le même format partout.
+        if (data.get("error") instanceof Map<?, ?> nested) {
+            Map<String, Object> flat = new java.util.LinkedHashMap<>(data);
+            nested.forEach((k, v) -> flat.put(String.valueOf(k), v));
+            data = flat;
+        }
         Object rawMessage = data.get("message") != null ? data.get("message") : data.get("detail");
         String message = rawMessage instanceof String s ? s : rawMessage != null ? String.valueOf(rawMessage) : "API error";
         // Insensible à la casse : le backend envoie tantôt "PUBLIC_KEY_NOT_ALLOWED", tantôt "public_key_not_allowed".
@@ -214,11 +248,17 @@ public class HttpClient {
 
         return switch (status) {
             case 401 -> new SanghoAuthException(message, data);
-            case 403 -> "public_key_not_allowed".equals(code)
-                ? new SanghoPublicKeyException(message, data)
-                : new SanghoPermissionException(message, data);
+            case 403 -> switch (code) {
+                case "public_key_not_allowed"    -> new SanghoPublicKeyException(message, data);
+                case "platform_partner_required" -> new SanghoPlatformPartnerRequiredException(message, data);
+                default                          -> new SanghoPermissionException(message, data);
+            };
             case 404 -> new SanghoNotFoundException(message, data);
-            case 409 -> new SanghoIdempotencyException(data);
+            // Sans code (ancien backend) ou idempotency_conflict : clé rejouée avec un autre corps ; tout autre code
+            // est un conflit d'état métier (ex : account_not_claimed).
+            case 409 -> code.isEmpty() || "idempotency_conflict".equals(code)
+                ? new SanghoIdempotencyException(data)
+                : new SanghoConflictException(message, data);
             case 422 -> new SanghoValidationException(validationMessage(data, message), data);
             case 429 -> new SanghoRateLimitException(data.get("message") instanceof String s ? s : null,
                 retryAfter(resp, data), data);

@@ -17,14 +17,14 @@ Java ≥ 17.
 <dependency>
   <groupId>com.sangho</groupId>
   <artifactId>sangho-java</artifactId>
-  <version>0.1.4</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 
 **Gradle :**
 
 ```groovy
-implementation 'com.sangho:sangho-java:0.1.4'
+implementation 'com.sangho:sangho-java:0.2.0'
 ```
 
 ## Démarrage

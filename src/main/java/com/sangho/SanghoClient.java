@@ -21,6 +21,7 @@ public class SanghoClient {
     private final AddressesResource addresses;
     private final AppsResource apps;
     private final CheckoutSessionsResource checkoutSessions;
+    private final ConnectResource connect;
     private final CustomersResource customers;
     private final InvoicesResource invoices;
     private final PartnersResource partners;
@@ -43,6 +44,7 @@ public class SanghoClient {
         this.addresses = new AddressesResource(http);
         this.apps = new AppsResource(http);
         this.checkoutSessions = new CheckoutSessionsResource(http);
+        this.connect = new ConnectResource(http);
         this.customers = new CustomersResource(http);
         this.invoices = new InvoicesResource(http);
         this.partners = new PartnersResource(http);
@@ -64,6 +66,7 @@ public class SanghoClient {
     public AddressesResource addresses()               { return addresses; }
     public AppsResource apps()                         { return apps; }
     public CheckoutSessionsResource checkoutSessions() { return checkoutSessions; }
+    public ConnectResource connect()                   { return connect; }
     public CustomersResource customers()               { return customers; }
     public InvoicesResource invoices()                 { return invoices; }
     public PartnersResource partners()                 { return partners; }

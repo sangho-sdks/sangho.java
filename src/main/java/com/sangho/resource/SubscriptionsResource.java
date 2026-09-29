@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sangho.http.HttpClient;
 import com.sangho.model.Subscription;
@@ -26,8 +27,13 @@ public class SubscriptionsResource {
     }
 
     public Subscription create(SubscriptionCreateParams params) {
+        return create(params, null);
+    }
+
+    /** Comme {@link #create(SubscriptionCreateParams)}, avec une clé d'idempotence (rejeu sans doublon). */
+    public Subscription create(SubscriptionCreateParams params, RequestOptions options) {
         http.assertSecretKey("subscriptions.create");
-        return http.post("/subscriptions/", params, Subscription.class);
+        return http.post("/subscriptions/", params, Subscription.class, options);
     }
 
     public Subscription update(String id, Map<String, Object> payload) {

@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sangho.http.HttpClient;
 import com.sangho.model.Refund;
@@ -26,8 +27,13 @@ public class RefundsResource {
     }
 
     public Refund create(RefundCreateParams params) {
+        return create(params, null);
+    }
+
+    /** Comme {@link #create(RefundCreateParams)}, avec une clé d'idempotence (rejeu sans doublon). */
+    public Refund create(RefundCreateParams params, RequestOptions options) {
         http.assertSecretKey("refunds.create");
-        return http.post("/refunds/", params, Refund.class);
+        return http.post("/refunds/", params, Refund.class, options);
     }
 
     public Refund cancel(String id) {

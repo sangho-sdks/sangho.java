@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sangho.http.HttpClient;
 import com.sangho.model.ListResponse;
@@ -27,9 +28,14 @@ public class PaymentLinksResource {
         return http.get(PATH + id + "/", null, MAP_TYPE);
     }
 
+    /** {@code payload} accepte {@code idempotency_key} : rejeu sans doublon. */
     public Map<String, Object> create(Map<String, Object> payload) {
+        return create(payload, null);
+    }
+
+    public Map<String, Object> create(Map<String, Object> payload, RequestOptions options) {
         http.assertSecretKey("paymentLinks.create");
-        return http.post(PATH, payload, Map.class);
+        return http.post(PATH, payload, Map.class, options);
     }
 
     public Map<String, Object> update(String id, Map<String, Object> payload) {

@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sangho.http.HttpClient;
 import com.sangho.model.Invoice;
@@ -26,8 +27,13 @@ public class InvoicesResource {
     }
 
     public Invoice create(InvoiceCreateParams params) {
+        return create(params, null);
+    }
+
+    /** Comme {@link #create(InvoiceCreateParams)}, avec une clé d'idempotence (rejeu sans doublon). */
+    public Invoice create(InvoiceCreateParams params, RequestOptions options) {
         http.assertSecretKey("invoices.create");
-        return http.post("/invoices/", params, Invoice.class);
+        return http.post("/invoices/", params, Invoice.class, options);
     }
 
     public Invoice update(String id, Map<String, Object> payload) {

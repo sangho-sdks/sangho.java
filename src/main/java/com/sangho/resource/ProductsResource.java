@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sangho.http.HttpClient;
 import com.sangho.model.Product;
@@ -26,8 +27,13 @@ public class ProductsResource {
     }
 
     public Product create(ProductCreateParams params) {
+        return create(params, null);
+    }
+
+    /** Comme {@link #create(ProductCreateParams)}, avec une clé d'idempotence (rejeu sans doublon). */
+    public Product create(ProductCreateParams params, RequestOptions options) {
         http.assertSecretKey("products.create");
-        return http.post("/products/", params, Product.class);
+        return http.post("/products/", params, Product.class, options);
     }
 
     public Product update(String id, ProductUpdateParams params) {

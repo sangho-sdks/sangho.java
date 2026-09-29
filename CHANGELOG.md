@@ -7,11 +7,32 @@ Ce projet respecte le [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
-## [Unreleased]
+## [0.2.0] - 2026-09-29
 
 > **Versionnement.** La version 1.0.0 ci-dessous était interne : ce SDK n'a jamais été publié (Maven Central). La
 > numérotation est réalignée sur celle du SDK JS (`@sanghosdk/js` 0.1.4, seul SDK publié), comme le demande
-> `CONTRIBUTING.md` (« tous les SDKs sont versionnés de façon synchronisée »). Version courante : **0.1.4**.
+> `CONTRIBUTING.md` (« tous les SDKs sont versionnés de façon synchronisée »). Version courante : **0.2.0** (0.1.4 = alignement sur l'API ; 0.2.0 y ajoute Connect, la vérification des signatures
+> webhook et l'idempotence, comme les SDK JS, Python, PHP et Ruby).
+
+### Added
+- **Paiement sécurisé à la livraison (Connect)** — `connect().payments()` : `retrieve`, `release`, `refund` (`scope` :
+  `product` / `full` / `amount`), `freeze`, `unfreeze`, `simulatePayment` (sandbox) ; `connect().accounts()` : `create`
+  (idempotent par `external_id`), `retrieve`, `list`, `reissueClaimToken`, `createKycSession`, `balance`, `createPayout`,
+  `listPayouts`.
+- Clé d'idempotence OBLIGATOIRE sur `release`, `refund` et `createPayout` : `SanghoValidationException` levée avant tout
+  appel réseau si elle manque.
+- `RequestOptions.idempotencyKey(...)` : surcharge `create(params, options)` sur clients, produits, factures,
+  remboursements, abonnements, paiements, webhooks, sessions de paiement et liens de paiement ; un corps `Map` accepte
+  aussi `idempotency_key`. Sans clé, un POST n'est plus rejoué après un délai dépassé / une erreur réseau.
+- `PaymentIntentCreateParams` : `currency` (défaut `XAF`, exigé par le backend) et `customerEmail`.
+- Exceptions `SanghoPlatformPartnerRequiredException` (403), `SanghoConflictException` (409 d'état métier, ex :
+  `account_not_claimed`) et `SanghoWebhookSignatureException` (`getReason()` : `malformed` / `expired` / `mismatch`,
+  sous-classe de `SanghoException`).
+- `WebhooksResource.constructEvent` accepte une liste de secrets (rotation) et plusieurs `v1` ; `generateTestHeader`
+  produit un en-tête valide pour tester son endpoint.
+
+### Changed
+- Les réponses d'erreur Connect au format `{"error": {"code", "message"}}` sont lues comme le format plat des autres routes.
 
 ### Fixed
 - **Bloquant** : `customers().create(...)`, `products().create(...)` et toutes les méthodes prenant un objet de

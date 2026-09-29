@@ -1,5 +1,6 @@
 package com.sangho.resource;
 
+import com.sangho.param.RequestOptions;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,8 +29,13 @@ public class CustomersResource {
     }
 
     public Customer create(CustomerCreateParams params) {
+        return create(params, null);
+    }
+
+    /** Comme {@link #create(CustomerCreateParams)}, avec une clé d'idempotence (rejeu sans doublon). */
+    public Customer create(CustomerCreateParams params, RequestOptions options) {
         http.assertSecretKey("customers.create");
-        return http.post("/customers/", params, Customer.class);
+        return http.post("/customers/", params, Customer.class, options);
     }
 
     public Customer update(String id, CustomerUpdateParams params) {
