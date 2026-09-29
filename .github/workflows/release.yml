@@ -1,0 +1,73 @@
+# .github/workflows/release.yml
+name: Release SDK
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Type de version (current = publie la version actuelle sans la changer)"
+        required: true
+        default: current
+        type: choice
+        options: [current, patch, minor, major]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Le pom.xml cible Java 17 (maven.compiler.release) ; on build avec le
+      # JDK 21, comme la CI.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - run: mvn -B verify
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump de version
+        if: inputs.bump != 'current'
+        run: |
+          current=$(mvn -q -B help:evaluate -Dexpression=project.version -DforceStdout)
+          IFS=. read -r major minor patch <<< "$current"
+          case "${{ inputs.bump }}" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+          new="${major}.${minor}.${patch}"
+          mvn -q -B versions:set -DnewVersion="$new" -DgenerateBackupPoms=false
+          sed -i "s/VERSION = \".*\"/VERSION = \"$new\"/" src/main/java/com/sangho/http/SdkVersion.java
+          git add pom.xml src/main/java/com/sangho/http/SdkVersion.java
+          git commit -m "chore: release v$new"
+
+      - name: Tag + push
+        run: |
+          version=$(mvn -q -B help:evaluate -Dexpression=project.version -DforceStdout)
+          git tag -a "v${version}" -m "Release v${version}"
+          git push origin main "v${version}"
+
+      # Profil "release" du pom.xml : sources, javadoc, signature GPG et
+      # publication sur Maven Central (Central Portal).
+      - name: Publish Maven Central
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -Prelease -DskipTests deploy
